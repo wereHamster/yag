@@ -32,6 +32,7 @@ instance Show Modifier where
     show (Peel a)       = "^{" ++ (typeString a) ++ "}"
     show (Reflog a)     = "@{" ++ (show a) ++ "}"
     show (Nontag)       = "^{}"
+    show (Path a)       = ":" ++ a
 
 
 data Revision = Revision { revisionBase :: Base, revisionModifiers :: [Modifier] }
@@ -43,7 +44,7 @@ instance Show Revision where
 hash, describe, refname, index, any :: Parser Base
 hash     = Hash                <$> stringHash
 describe = Describe . toString <$> AP.takeWhile (AP.inClass "a-z")
-refname  = Refname  . toString <$> AP.takeWhile (AP.inClass "a-z/")
+refname  = Refname  . toString <$> AP.takeWhile (AP.inClass "a-zA-Z0-9./_-")
 index    = Index               <$  char ':'
 any      = Any                 <$  char ':'
 
@@ -61,16 +62,16 @@ ancestor = ctor <$  char '~' <*> optional decimal where
     ctor Nothing  = Ancestor 1
 peel = Peel <$ char '^' <* char '{' <*> objectType <* char '}'
 reflog = Reflog <$ char '@' <* char '{' <*> decimal <* char '}'
+nontag = Nontag <$ char '^' <* char '{' <* char '}'
+path = Path <$ char ':' <*> remString
 
 date = peel
 branch = peel
 upstream = peel
-nontag = Nontag <$ char '^' <* char '{' <* char '}'
 regex = peel
-path = peel
 
 modifier :: Parser Modifier
-modifier = nontag <|> peel <|> parent <|> ancestor <|> reflog
+modifier = nontag <|> peel <|> parent <|> ancestor <|> reflog <|> path
 
 -- The parser for an actual revision.
 revision :: Parser Revision
