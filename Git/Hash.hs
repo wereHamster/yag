@@ -21,7 +21,8 @@ import Git.Object
 data Hash = Hash { hashData :: L.ByteString } deriving (Eq)
 
 
--- Creating hash from a binary or hex encoded ByteString.
+-- Creating hash from a binary or hex encoded ByteString. Those are the
+-- formats which appear in files or are supplied by the user.
 hashFromBinary, hashFromString :: S.ByteString -> Hash
 hashFromBinary a = Hash $ L.fromChunks [a]
 hashFromString a = hashFromHex $ L.fromChunks [a]

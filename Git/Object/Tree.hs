@@ -15,18 +15,18 @@ data Entry = Entry {
 } deriving (Eq)
 
 instance Show Entry where
-    show entry = concat $ intersperse " " $ map ($entry) [ mode, hash, path ]
-        where
-            mode entry = formatMode $ entryMode entry
-            hash entry = show $ entryHash entry
-            path entry = entryPath entry
+    show entry = concat $ intersperse " " [ mode, hash, path ] where
+        mode = formatMode $ entryMode entry
+        hash = show $ entryHash entry
+        path = entryPath entry
 
-            formatMode mode = printf "%06o" mode :: String
+        formatMode mode = printf "%06o" mode :: String
 
 data Tree = Tree { treeEntries :: [Entry] } deriving (Eq)
 
 -- The magic empty tree hash. It's not hardcoded anywhere, instead we generate
--- it as needed.
+-- it as needed. But we should still check somewhere that we'r generating the
+-- correct hash: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
 emptyTreeHash :: Hash
 emptyTreeHash = treeHash $ Tree []
 

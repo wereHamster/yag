@@ -3,6 +3,7 @@ module Git.Repository where
 
 import System.IO
 import Data.ByteString.Internal
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Codec.Compression.Zlib
 
@@ -10,6 +11,7 @@ import Data.Word
 
 import Git.Hash
 import Git.Object
+import Git.Parser
 
 data Repository = Repository {
     repositoryDataDirectory :: FilePath,
@@ -25,10 +27,10 @@ objectPath repo hash = (objectStore repo) ++ "/" ++ x ++ "/" ++ y
         x = take 2 $ show hash
         y = drop 2 $ show hash
 
-loadObject :: Repository -> Hash -> IO String
+loadObject :: Repository -> Hash -> IO S.ByteString
 loadObject repo hash = do
     handle <- openFile (objectPath repo hash) ReadMode
     hSetBinaryMode handle True
     contents <- L.hGetContents handle
 
-    return $ map Data.ByteString.Internal.w2c $ L.unpack $ decompress contents
+    return $ head . L.toChunks $ decompress contents

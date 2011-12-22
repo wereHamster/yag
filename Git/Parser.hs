@@ -82,8 +82,8 @@ identTime = (,) <$> identity <* space <*> timestamp
 ------------------------------------------------------------------------------
 -- A blob is just a bunch of bytes. We need to convert the data into a lazy
 -- bytestring, but that's it.
-parseBlob :: Parser Blob
-parseBlob = ctor <$> anything where
+blobParser :: Parser Blob
+blobParser = ctor <$> anything where
     ctor a = Git.Object.Blob.Blob $ L.fromChunks [a]
     anything = AP.takeWhile (const True) <* endOfInput
 
@@ -93,8 +93,8 @@ parseBlob = ctor <$> anything where
 ------------------------------------------------------------------------------
 -- A commit consists of many headers, followed by a empty line, followed by
 -- the commit message.
-parseCommit :: Parser Commit
-parseCommit = ctor <$> manyTill header newline <*> remString where
+commitParser :: Parser Commit
+commitParser = ctor <$> manyTill header newline <*> remString where
     ctor headers message = applyCommitHeaders commit headers where
         commit = emptyCommit { commitMessage = message }
 
@@ -127,8 +127,8 @@ applyCommitHeaders = foldl applyHeader where
 -- Parser: Tag
 ------------------------------------------------------------------------------
 -- A tag is much like a commit, a bunch of headers, then the message.
-parseTag :: Parser Tag
-parseTag = ctor <$> manyTill header newline <*> remString where
+tagParser :: Parser Tag
+tagParser = ctor <$> manyTill header newline <*> remString where
     ctor headers message = applyTagHeaders tag headers where
         tag = emptyTag { tagMessage = message }
 
@@ -155,13 +155,36 @@ applyTagHeaders = foldl applyHeader where
 -- Parser: Tree
 ------------------------------------------------------------------------------
 -- The tree consists of many tree entries.
-parseTree :: Parser Tree
-parseTree = Git.Object.Tree.Tree <$> many1 treeEntry where
+treeParser :: Parser Tree
+treeParser = Git.Object.Tree.Tree <$> many1 treeEntry where
     treeEntry = Entry <$> (octal <* space) <*> nullString <*> binaryHash
 
 
+data Object = GitBlob Blob | GitCommit Commit | GitTag Tag | GitTree Tree
+    deriving (Eq, Show)
+
+-- Return the proper parser for the given object type.
+objectBuilder :: (Git.Object.Type, Int) -> Parser Object
+objectBuilder (Git.Object.Blob,   length) = GitBlob   <$> blobParser
+objectBuilder (Git.Object.Commit, length) = GitCommit <$> commitParser
+objectBuilder (Git.Object.Tag,    length) = GitTag    <$> tagParser
+objectBuilder (Git.Object.Tree,   length) = GitTree   <$> treeParser
+
+gitObject :: Parser Object
+gitObject = header >>= objectBuilder where
+    header = (,) <$> (objectType <* space) <*> (decimal <* (char '\0'))
+
+
+objectType :: Parser Git.Object.Type
+objectType = blob <|> commit <|> tag <|> tree where
+    blob   = Git.Object.Blob   <$ (string $ S.pack $ Prelude.map c2w "blob")
+    commit = Git.Object.Commit <$ (string $ S.pack $ Prelude.map c2w "commit")
+    tag    = Git.Object.Tag    <$ (string $ S.pack $ Prelude.map c2w "tag")
+    tree   = Git.Object.Tree   <$ (string $ S.pack $ Prelude.map c2w "tree")
+
+
 commitData = S.pack $ Prelude.map c2w "tree b9c78fce14142eadb1515b433582e3e30899a3b8\nparent 9b9cb51d592a6217404806acdf7acd010eccc048\nauthor arst <qwfp> 3456 +0100\n\nmessage"
-testParse = case parse parseCommit commitData of
+testParse = case parse commitParser commitData of
     Fail err a b -> "fail " ++ show err
     Partial a -> case a S.empty of
         Fail err a b -> show err ++ show a ++ show b
@@ -177,6 +200,6 @@ testIdentity = case parse identTime identityData of
     Done a b -> "done " ++ show b
 
 treeData = S.pack $ Prelude.map c2w $ "100644 bar\0\255\1\2\3\4\5\6\7\8\9\0\1\2\3\4\5\6\7\8\9" ++ "100755 foo\0\0\1\2\1\2\1\2\1\2\1\2\1\2\1\2\1\2\1\2\1"
-testTree = case parseOnly parseTree treeData of
+testTree = case parseOnly treeParser treeData of
     Left err -> error $ "fail " ++ show err
     Right tree -> tree
