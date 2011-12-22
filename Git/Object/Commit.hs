@@ -11,8 +11,12 @@ import Data.Attoparsec.Char8 hiding (take)
 
 import System.Locale
 import Data.Time
+import Data.Time.Clock.POSIX
+import Data.Time.LocalTime
+
 import Data.Word
 import Data.Char
+import Data.List
 
 import Git.Hash
 import Git.Object
@@ -23,15 +27,20 @@ data Commit = Commit {
 
     -- Each commit has an author and a committer. And dates for both.
     commitAuthor :: Identity,      commitCommitter :: Identity,
-    commitAuthorDate :: UTCTime,   commitCommitterDate :: UTCTime,
+    commitAuthorDate :: ZonedTime,   commitCommitterDate :: ZonedTime,
 
     commitMessage :: String
-} deriving (Eq)
+}
 
 emptyCommit :: Commit
 emptyCommit = Git.Object.Commit.Commit nullHash [] defaultIdentity defaultIdentity time time "" where
-    time = UTCTime (ModifiedJulianDay 0) 0
+    time = utcToZonedTime utc $ posixSecondsToUTCTime $ realToFrac 0
 
+onelineCommit :: Commit -> String
+onelineCommit commit = concat $ intersperse " " [ hash, subject, date ] where
+    hash = abbrev 7 $ commitHash commit
+    subject = commitMessageSubject commit
+    date = formatTime defaultTimeLocale "(%Y-%m-%d %H:%M)" (commitAuthorDate commit)
 
 instance Show Commit where
     show commit = (unlines $ concat $ headers commit) ++ "\n" ++ (commitMessage commit) where

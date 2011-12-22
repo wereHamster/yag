@@ -1,7 +1,10 @@
 
 module Git.Repository where
 
+import Control.Exception
+
 import System.IO
+import System.FilePath
 import System.Directory
 
 import Data.ByteString.Internal
@@ -14,15 +17,30 @@ import Data.Word
 
 import Git.Hash
 import Git.Object
+import Git.Object.Commit
 import Git.Parser
 
 data Repository = Repository {
-    repositoryDataDirectory :: FilePath,
-    repositoryWorkingDirectory :: FilePath
+    gitDir :: FilePath, workingDir:: FilePath
 } deriving (Eq, Show)
 
+thisRepo :: Repository
+thisRepo = Repository ".git" ""
+
+-- Starting at a path, find the repository root (directory with a .git dir).
+findRepository :: FilePath -> IO (Maybe Repository)
+findRepository path = do
+    let gitDir = path </> ".git"
+    exist <- doesDirectoryExist gitDir
+    if exist
+        then return $ Just $ Repository gitDir path
+        else if path == "/"
+            then return Nothing
+            else findRepository (takeDirectory path)
+
+
 objectStore :: Repository -> FilePath
-objectStore repo = (repositoryDataDirectory repo) ++ "/objects"
+objectStore repo = (gitDir repo) ++ "/objects"
 
 objectPath :: Repository -> Hash -> FilePath
 objectPath repo hash = (objectStore repo) ++ "/" ++ x ++ "/" ++ y where
@@ -40,6 +58,10 @@ loadObject repo hash = do
     case object of
         Right a -> return a
         otherwise -> error "couldn't parse object"
+
+toCommit :: Object -> IO Commit
+toCommit (GitCommit commit) = return commit
+toCommit _ = error "Not a commit"
 
 dumpObjectAtPath :: FilePath -> IO ()
 dumpObjectAtPath path = do

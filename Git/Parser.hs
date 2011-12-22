@@ -12,6 +12,7 @@ import Data.Attoparsec.Char8 hiding (take)
 import System.Locale
 import Data.Time
 import Data.Time.Clock.POSIX
+import Data.Time.LocalTime
 
 import Git.Utils
 import Git.Hash
@@ -67,13 +68,19 @@ identity = ctor <$> name <*> email where
     name  = AP.takeWhile (not . (== c2w '<')) <* char '<'
     email = AP.takeWhile (not . (== c2w '>')) <* char '>'
 
--- Unix timestamp + offset. The offset is currently ignored.
-timestamp :: Parser UTCTime
-timestamp = ctor <$> decimal <* space <* signed decimal where
-    ctor seconds = posixSecondsToUTCTime $ realToFrac seconds
+timeZone :: Parser TimeZone
+timeZone = ctor <$> signed decimal where
+    ctor offset = TimeZone (hours * 60 + minutes) False "" where
+        hours = offset `div` 100; minutes = offset - hours * 100
 
--- Identity + UTCTime, space separated, as it appears in header lines.
-identTime :: Parser (Identity, UTCTime)
+
+-- Unix timestamp + offset
+timestamp :: Parser ZonedTime
+timestamp = ctor <$> decimal <* space <*> timeZone where
+    ctor seconds zone = utcToZonedTime zone (posixSecondsToUTCTime $ realToFrac seconds)
+
+-- Identity + ZonedTime, space separated, as it appears in header lines.
+identTime :: Parser (Identity, ZonedTime)
 identTime = (,) <$> identity <* space <*> timestamp
 
 
@@ -161,7 +168,7 @@ treeParser = Git.Object.Tree.Tree <$> many1 treeEntry where
 
 
 data Object = GitBlob Blob | GitCommit Commit | GitTag Tag | GitTree Tree
-    deriving (Eq, Show)
+    deriving (Show)
 
 -- Return the proper parser for the given object type.
 objectBuilder :: (Git.Object.Type, Int) -> Parser Object

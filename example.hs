@@ -1,5 +1,7 @@
 
 import Data.Time
+import Data.Time.Clock.POSIX
+import Data.Time.LocalTime
 
 import Git.Object
 import Git.Object.Commit
@@ -8,7 +10,8 @@ import Git.Object.Tag
 import Git.Hash
 import Git.Identity
 
-now = UTCTime (ModifiedJulianDay 550000) 0
+zone = TimeZone 60 False ""
+now = utcToZonedTime zone $ posixSecondsToUTCTime $ realToFrac 237833672
 
 tree = Git.Object.Tree.Tree [
         Entry 0o000644 "path.c" emptyTreeHash,

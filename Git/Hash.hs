@@ -82,3 +82,6 @@ nullHash = Hash { hashData = L.pack $ take 20 $ repeat 0 }
 -- Showing a hash displays its contents in hex encoding.
 instance Show Hash where
     show hash = map w2c $ encodeHex $ L.unpack $ hashData hash
+
+abbrev :: Int -> Hash -> String
+abbrev n hash = take n $ show hash
