@@ -2,6 +2,7 @@
 module Git.Hash where
 
 import Data.ByteString.Internal
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 
 import Data.Digest.SHA1
@@ -20,10 +21,18 @@ import Git.Object
 data Hash = Hash { hashData :: L.ByteString } deriving (Eq)
 
 
+-- Creating hash from a binary or hex encoded ByteString.
+hashFromBinary, hashFromString :: S.ByteString -> Hash
+hashFromBinary a = Hash $ L.fromChunks [a]
+hashFromString a = hashFromHex $ L.fromChunks [a]
+
 -- We support conversion between Hash and ByteString. Because most of our
 -- input we get in the form of ByteString (file etc).
 hashFromHex :: L.ByteString -> Hash
 hashFromHex hex = Hash $ L.pack $ decodeHex $ L.unpack hex
+
+hashFromHexStrict :: S.ByteString -> Hash
+hashFromHexStrict hex = hashFromHex $ L.fromChunks [hex]
 
 hashFromHexString :: String -> Hash
 hashFromHexString hex = hashFromHex $ L.pack $ map c2w hex

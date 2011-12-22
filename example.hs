@@ -11,10 +11,10 @@ import Git.Identity
 now = UTCTime (ModifiedJulianDay 550000) 0
 
 tree = Git.Object.Tree.Tree [
-        Entry 0o100644 Git.Object.Blob emptyTreeHash "path.c",
-        Entry 0o100644 Git.Object.Tree emptyTreeHash "directory"
+        Entry 0o000644 "path.c" emptyTreeHash,
+        Entry 0o000644 "directory" emptyTreeHash
     ]
 
-commit = Git.Object.Commit.Commit [] emptyTreeHash defaultIdentity defaultIdentity now now "Commit subject"
+commit = Git.Object.Commit.Commit (treeHash tree) [] defaultIdentity defaultIdentity now now "Commit subject"
 
 tag = Git.Object.Tag.Tag emptyTreeHash Git.Object.Tree defaultIdentity now "v1.0" "Message"

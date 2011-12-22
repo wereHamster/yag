@@ -11,17 +11,15 @@ import qualified Git.Object as Object
 import Git.Hash
 
 data Entry = Entry {
-    entryMode :: Int, entryType :: Object.Type, entryHash :: Hash,
-    entryName :: String
+    entryMode :: Int, entryPath :: String, entryHash :: Hash
 } deriving (Eq)
 
 instance Show Entry where
-    show entry = concat $ intersperse " " $ map ($entry) [ mode, otyp, hash, name ]
+    show entry = concat $ intersperse " " $ map ($entry) [ mode, hash, path ]
         where
             mode entry = formatMode $ entryMode entry
-            otyp entry = Object.typeString $ entryType entry
             hash entry = show $ entryHash entry
-            name entry = entryName entry
+            path entry = entryPath entry
 
             formatMode mode = printf "%06o" mode :: String
 

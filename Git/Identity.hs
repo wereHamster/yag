@@ -1,6 +1,7 @@
 
 module Git.Identity where
 
+
 import Data.DateTime
 import System.IO
 
@@ -15,3 +16,5 @@ loadDefaultIdentity = return defaultIdentity
 
 instance Show Identity where
     show identity = (identityName identity) ++ " <" ++ (identityEmail identity) ++ ">"
+
+

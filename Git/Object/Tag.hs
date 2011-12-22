@@ -12,24 +12,32 @@ import Git.Hash
 import Git.Identity
 
 data Tag = Tag {
-    tagObject :: Hash, tagType :: Git.Object.Type,
-    tagTagger :: Identity, tagTaggerDate :: UTCTime,
+    -- The object, in terms of hash and type.
+    tagObject :: Hash, tagObjectType :: Git.Object.Type,
+
+    -- The identify of the person who created the tag.
+    tagTagger :: Identity,
+    tagTaggerDate :: UTCTime,
+
+    -- A name and message.
     tagName :: String, tagMessage :: String
 } deriving (Eq)
 
-instance Show Tag where
-    show tag = (unlines $ concat $ headers tag) ++ "\n" ++ (tagMessage tag)
-        where
-            headers tag = map ($tag) [ object, otype, name, tagger ]
-            timestamp   = formatTime defaultTimeLocale "%s %z"
+emptyTag :: Tag
+emptyTag = Git.Object.Tag.Tag nullHash Git.Object.Invalid defaultIdentity time "" "" where
+    time = UTCTime (ModifiedJulianDay 0) 0
 
-            object  tag = [ "object " ++ (show $ tagObject tag) ]
-            otype   tag = [ "type " ++ (typeString $ tagType tag) ]
-            name    tag = [ "tag " ++ (tagName tag) ]
-            tagger  tag = [ "tagger " ++ (show $ tagTagger tag) ++ " " ++ (timestamp $ tagTaggerDate tag) ]
+instance Show Tag where
+    show tag = (unlines $ concat $ headers tag) ++ "\n" ++ (tagMessage tag) where
+        headers tag = map ($tag) [ object, typ, name, tagger ]
+        timestamp   = formatTime defaultTimeLocale "%s %z"
+
+        object  tag = [ "object " ++ (show $ tagObject tag) ]
+        typ     tag = [ "type " ++ (typeString $ tagObjectType tag) ]
+        name    tag = [ "tag " ++ (tagName tag) ]
+        tagger  tag = [ "tagger " ++ (show $ tagTagger tag) ++ " " ++ (timestamp $ tagTaggerDate tag) ]
 
 
 tagHash :: Tag -> Hash
-tagHash tag = hashFromObject Git.Object.Tag tagData
-    where
-        tagData = L.pack $ map (fromIntegral . ord) $ show tag
+tagHash tag = hashFromObject Git.Object.Tag tagData where
+    tagData = L.pack $ map (fromIntegral . ord) $ show tag
