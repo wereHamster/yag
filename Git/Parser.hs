@@ -1,18 +1,29 @@
-
+{-# LANGUAGE OverloadedStrings #-}  
+-- SM: This allows you to use string literals for 'S.ByteString's. The
+-- corresponding 'IsString' class instance is imported from
+-- "Data.ByteString.Char8".
 module Git.Parser where
 
-import Data.ByteString.Internal
-import qualified Data.ByteString as S
-import qualified Data.ByteString.Lazy as L
+-- Internals modules are required only in very rare circumstances.
+-- import           Data.ByteString.Internal  
+
+import qualified Data.ByteString             as S
+import qualified Data.ByteString.Lazy        as L
+-- if your really only need ASCII strings, then the Char8 versions are what
+-- you are looking for
+import qualified Data.ByteString.Char8       as S8
+import qualified Data.ByteString.Lazy.Char8  as L8
+import           Data.Char (ord)
+import           Data.Time
+import           Data.Time.Clock.POSIX
+import           Data.Time.LocalTime
+import           Data.Word (Word8)
 
 import Control.Applicative
 import qualified Data.Attoparsec.ByteString as AP (word8, take, takeWhile, takeTill)
 import Data.Attoparsec.Char8 hiding (take)
 
 import System.Locale
-import Data.Time
-import Data.Time.Clock.POSIX
-import Data.Time.LocalTime
 
 import Git.Utils
 import Git.Hash
@@ -24,8 +35,18 @@ import Git.Object.Commit
 import Git.Object.Tag
 import Git.Object.Tree
 
--- A newline character, used as a delimiter and such.
+-- SM: If you start your comment with  -- |  then Haddock will parse it as the
+-- function documentation. See
+-- <http://www.haskell.org/haddock/doc/html/ch03s08.html> for more
+-- information. (BTW, sometimes the Haddock markup language feels a bit
+-- underpowered.  I hope somebody (I) will do something about this.)
+
+-- | A newline character, used as a delimiter and such.
 newline = char '\n'
+
+-- | Convert a 'Char' to a 'Word8' by truncating its Unicode codepoint.
+c2w :: Char -> Word8
+c2w = fromIntegral . ord
 
 -- Number encoded in octal, the mode in the tree is stored like that.
 octal :: Parser Int
@@ -33,19 +54,28 @@ octal = S.foldl' step 0 <$> AP.takeWhile isOctalDigit where
     isOctalDigit a = 48 <= a && a <= 55
     step a w = a * 8 + fromIntegral (w - 48)
 
+-- SM: As you noted in your TODO list: Use bytestrings everywhere. Linked
+-- lists are just too slow for the sort of stuff you're doing.
+--
+-- BTW: Is the git format an ASCII or a Unicode format?
+
 -- Convert a strict ByteString to a normal string. This function assumes that
 -- the bytestring is ASCII encoded.
 toString :: S.ByteString -> String
-toString x = map w2c $ S.unpack x
+toString = S8.unpack
 
 -- A null terminated string. We don't check the contents, just that it ends
 -- with a null, and then convert it to a string.
 nullString :: Parser String
 nullString = toString <$> AP.takeTill (== 0) <* (AP.word8 0)
 
+-- | Parse the remainder of the input as a single strict 'S.ByteString'.
+takeRest :: Parser S.ByteString
+takeRest = takeRest
+
 -- Parse the remainder of the input as a string.
 remString :: Parser String
-remString = toString <$> AP.takeWhile (const True) <* endOfInput
+remString = toString <$> takeRest <* endOfInput
 
 -- Binary and hex encoded hashes.
 binaryHash, stringHash :: Parser Hash
@@ -56,7 +86,14 @@ stringHash = hashFromString <$> AP.take 40
 -- This is a parser for these header lines, it splits each line into a
 -- (key, value) tuple.
 header :: Parser (String, S.ByteString)
-header = ctor <$> key <* space <*> value where
+header = 
+    ctor <$> key <* space <*> value
+  where
+    -- SM: I rather like the following style guide:
+    --
+    --   https://github.com/tibbe/haskell-style-guide/blob/master/haskell-style.md
+    --
+    -- I found that it results in very readable code.
     ctor k v  = (toString k, v)
     key   = AP.takeWhile (not . (== c2w ' '))
     value = AP.takeWhile (not . isEndOfLine) <* endOfLine
@@ -92,7 +129,7 @@ identTime = (,) <$> identity <* space <*> timestamp
 blobParser :: Parser Blob
 blobParser = ctor <$> anything where
     ctor a = Git.Object.Blob.Blob $ L.fromChunks [a]
-    anything = AP.takeWhile (const True) <* endOfInput
+    anything = takeRest <* endOfInput
 
 
 
@@ -105,7 +142,7 @@ commitParser = ctor <$> manyTill header newline <*> remString where
     ctor headers message = applyCommitHeaders commit headers where
         commit = emptyCommit { commitMessage = message }
 
-    message = AP.takeWhile (const True) <* endOfInput
+    message = takeRest <* endOfInput
 
 -- Currently we don't handle the case when this function fails.
 applyCommitAuthor, applyCommitCommitter :: Commit -> S.ByteString -> Commit
@@ -117,7 +154,9 @@ applyCommitCommitter commit hdr = case parseOnly identTime hdr of
 
 -- Given a list of headers, apply them to the commit.
 applyCommitHeaders :: Commit -> [(String, S.ByteString)] -> Commit
-applyCommitHeaders = foldl applyHeader where
+applyCommitHeaders = 
+    foldl applyHeader 
+  where
     applyHeader commit (key, value)
         | key == "tree" =
             commit { commitTree = hashFromHexStrict value }
@@ -127,7 +166,7 @@ applyCommitHeaders = foldl applyHeader where
             applyCommitAuthor commit value
         | key == "committer" =
             applyCommitCommitter commit value
-        | otherwise = commit
+        | otherwise = commit -- SM: shouldn't this be an error or a warning at least?
 
 
 
@@ -139,7 +178,7 @@ tagParser = ctor <$> manyTill header newline <*> remString where
     ctor headers message = applyTagHeaders tag headers where
         tag = emptyTag { tagMessage = message }
 
-    message = AP.takeWhile (const True) <* endOfInput
+    message = takeRest <* endOfInput
 
 applyTagTagger :: Tag -> S.ByteString -> Tag
 applyTagTagger tag hdr = case parseOnly identTime hdr of
@@ -184,12 +223,13 @@ gitObject = header >>= objectBuilder where
 
 objectType :: Parser Git.Object.Type
 objectType = blob <|> commit <|> tag <|> tree where
-    blob   = Git.Object.Blob   <$ (string $ S.pack $ Prelude.map c2w "blob")
-    commit = Git.Object.Commit <$ (string $ S.pack $ Prelude.map c2w "commit")
-    tag    = Git.Object.Tag    <$ (string $ S.pack $ Prelude.map c2w "tag")
-    tree   = Git.Object.Tree   <$ (string $ S.pack $ Prelude.map c2w "tree")
+    blob   = Git.Object.Blob   <$ (string "blob")
+    commit = Git.Object.Commit <$ (string "commit")
+    tag    = Git.Object.Tag    <$ (string "tag")
+    tree   = Git.Object.Tree   <$ (string "tree")
 
 
+{-
 commitData = S.pack $ Prelude.map c2w "tree b9c78fce14142eadb1515b433582e3e30899a3b8\nparent 9b9cb51d592a6217404806acdf7acd010eccc048\nauthor arst <qwfp> 3456 +0100\n\nmessage"
 testParse = case parse commitParser commitData of
     Fail err a b -> "fail " ++ show err
@@ -210,3 +250,4 @@ treeData = S.pack $ Prelude.map c2w $ "100644 bar\0\255\1\2\3\4\5\6\7\8\9\0\1\2\
 testTree = case parseOnly treeParser treeData of
     Left err -> error $ "fail " ++ show err
     Right tree -> tree
+-}
