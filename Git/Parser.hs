@@ -71,7 +71,7 @@ nullString = toString <$> AP.takeTill (== 0) <* (AP.word8 0)
 
 -- | Parse the remainder of the input as a single strict 'S.ByteString'.
 takeRest :: Parser S.ByteString
-takeRest = takeRest
+takeRest = AP.takeWhile (const True)
 
 -- Parse the remainder of the input as a string.
 remString :: Parser String

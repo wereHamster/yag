@@ -96,14 +96,14 @@ resolveBase repo base = do
         otherwise -> return Nothing
 
 applyModifiers :: Repository -> [Modifier] -> Maybe H.Hash -> IO (Maybe H.Hash)
-applyModifiers repo modifiers base0 =
-    foldM apply base0 modifiers
+applyModifiers repo modifiers base =
+    foldM apply base modifiers
   where
     -- SM: No monad required. Just some twiddling with argument structure.
     -- I think now it is also easier to understand what's happening.
     apply Nothing     _        = return Nothing
-    apply (Just base) modifier = do
-        obj <- loadObject repo base 
+    apply (Just hash) modifier = do
+        obj <- loadObject repo hash
         case modifier of
           Parent n   -> commitParent n obj
           Ancestor n -> walkAncestors repo n obj
