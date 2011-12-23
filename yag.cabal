@@ -18,5 +18,16 @@ Homepage: https://github.com/wereHamster/yag
 
 Executable yag
     Main-Is: yag.hs
-    Build-Depends: base, bytestring, directory, filepath, attoparsec, zlib,
-        Crypto, time, datetime, old-locale
+    Build-Depends: 
+        -- Always use explicit version ranges. I couldn't compile your library
+        -- because, I got the wrong attoparsec version.
+        base         == 4.*
+      , bytestring   == 0.9.*
+      , directory    == 1.1.*
+      , filepath
+      , attoparsec   == 0.10.*
+      , zlib
+      , Crypto
+      , time
+      , datetime
+      , old-locale
