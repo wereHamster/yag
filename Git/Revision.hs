@@ -1,12 +1,13 @@
 
 module Git.Revision where
 
-import Data.ByteString.Internal
-import qualified Data.ByteString as S
+import           Control.Monad (foldM)
 
-import Data.List
-import Data.Time
-import Data.Maybe
+import qualified Data.ByteString as S
+import           Data.List
+import           Data.Maybe
+import           Data.Time
+
 
 import Control.Applicative
 import qualified Data.Attoparsec.ByteString as AP (word8, inClass, take, takeWhile, takeTill)
@@ -95,20 +96,18 @@ resolveBase repo base = do
         otherwise -> return Nothing
 
 applyModifiers :: Repository -> [Modifier] -> Maybe H.Hash -> IO (Maybe H.Hash)
-applyModifiers _ _ Nothing = return Nothing
-applyModifiers repo [] (Just base) = return $ Just base
-
--- Modifier: Parent
-applyModifiers repo ((Parent n):xs) (Just base) = do
-    loadObject repo base >>= commitParent n >>= applyModifiers repo xs
-
--- Modifier: Ancestor
-applyModifiers repo ((Ancestor n):xs) (Just base) = do
-    loadObject repo base >>= walkAncestors repo n >>= applyModifiers repo xs
-
--- Modifier: Peel
-applyModifiers repo ((Peel t):xs) (Just base) =
-    loadObject repo base >>= peelTo t >>= applyModifiers repo xs
+applyModifiers repo modifiers base0 =
+    foldM apply base0 modifiers
+  where
+    -- SM: No monad required. Just some twiddling with argument structure.
+    -- I think now it is also easier to understand what's happening.
+    apply Nothing     _        = return Nothing
+    apply (Just base) modifier = do
+        obj <- loadObject repo base 
+        case modifier of
+          Parent n   -> commitParent n obj
+          Ancestor n -> walkAncestors repo n obj
+          Peel t     -> peelTo t obj
 
 -- Turn a Revision into a Hash (if possible).
 resolveRevision :: Repository -> Revision -> IO (Maybe H.Hash)
