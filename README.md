@@ -10,6 +10,7 @@ What it can:
 - Serialize objects (commit, blob and tag; tree not yet finished)
 - Revision parsing (like git rev-parse)
 - Gitdir discovery
+- Ref loading (only lose refs for now)
 
 
 What's missing:

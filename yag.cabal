@@ -1,0 +1,22 @@
+
+Cabal-Version: >= 1.2
+Build-Type: Simple
+Name: yag
+
+Version: 0.1
+Synopsis: Git implementation
+Description:
+    Yet Another Git. Mainly for educational purposes.
+
+Category: Development
+License: GPL
+License-File: UNLICENSE
+Author: Tomas Carnecky
+Maintainer: tomas.carnecky@gmail.com
+Copyright: (c) 2011 Tomas "wereHamster" Carnecky <tomas.carnecky@gmail.com>
+Homepage: https://github.com/wereHamster/yag
+
+Executable yag
+    Main-Is: yag.hs
+    Build-Depends: base, bytestring, directory, filepath, attoparsec, zlib,
+        Crypto, time, datetime, old-locale

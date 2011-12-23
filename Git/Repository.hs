@@ -17,7 +17,10 @@ import Data.Word
 
 import Git.Hash
 import Git.Object
+import Git.Object.Blob
 import Git.Object.Commit
+import Git.Object.Tag
+import Git.Object.Tree
 import Git.Parser
 
 data Repository = Repository {
@@ -58,6 +61,27 @@ loadObject repo hash = do
     case object of
         Right a -> return a
         otherwise -> error "couldn't parse object"
+
+peelTo :: Type -> Object -> IO (Maybe Hash)
+
+-- Commits can be peeled to itself or the tree.
+peelTo Git.Object.Commit (GitCommit o) = return $ Just $ commitHash o
+peelTo Git.Object.Tree   (GitCommit o) = return $ Just $ commitTree o
+
+peelTo _ _ = return Nothing
+
+commitParent :: Int -> Object -> IO (Maybe Hash)
+commitParent n (GitCommit c)
+    | n < 0 || n > (length $ commitParents c) = return Nothing
+    | otherwise = return $ Just $ commitParents c !! (n - 1)
+commitParent _ _ = return Nothing
+
+walkAncestors :: Repository -> Int -> Object -> IO (Maybe Hash)
+walkAncestors repo n (GitCommit c)
+    | n == 0 = return $ Just $ commitHash c
+    | null $ commitParents c = return Nothing
+    | otherwise = loadObject repo (head $ commitParents c) >>= walkAncestors repo (n - 1)
+walkAncestors _ _ _ = return Nothing
 
 toCommit :: Object -> IO Commit
 toCommit (GitCommit commit) = return commit

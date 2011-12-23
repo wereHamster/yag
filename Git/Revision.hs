@@ -13,8 +13,11 @@ import qualified Data.Attoparsec.ByteString as AP (word8, inClass, take, takeWhi
 import Data.Attoparsec.Char8 hiding (take)
 
 import qualified Git.Hash as H
+import Git.Object.Commit
 import Git.Object
 import Git.Parser
+import Git.Repository
+import Git.Ref
 
 -- We start with a base, and modify it until we get the revision we want. This
 -- approach makes it quite easy to write the parser, as we parse the rev from
@@ -81,6 +84,36 @@ parseRevision :: String -> Maybe Revision
 parseRevision input = case parseOnly revision (S.pack $ Prelude.map c2w input) of
     Left _  -> Nothing
     Right a -> Just a
+
+resolveBase :: Repository -> Base -> IO (Maybe H.Hash)
+resolveBase repo base = do
+    case base of
+        Hash a -> return $ Just a
+        Refname a -> do
+            x <- fullNameRef repo a
+            resolveRef repo $ fromJust x
+        otherwise -> return Nothing
+
+applyModifiers :: Repository -> [Modifier] -> Maybe H.Hash -> IO (Maybe H.Hash)
+applyModifiers _ _ Nothing = return Nothing
+applyModifiers repo [] (Just base) = return $ Just base
+
+-- Modifier: Parent
+applyModifiers repo ((Parent n):xs) (Just base) = do
+    loadObject repo base >>= commitParent n >>= applyModifiers repo xs
+
+-- Modifier: Ancestor
+applyModifiers repo ((Ancestor n):xs) (Just base) = do
+    loadObject repo base >>= walkAncestors repo n >>= applyModifiers repo xs
+
+-- Modifier: Peel
+applyModifiers repo ((Peel t):xs) (Just base) =
+    loadObject repo base >>= peelTo t >>= applyModifiers repo xs
+
+-- Turn a Revision into a Hash (if possible).
+resolveRevision :: Repository -> Revision -> IO (Maybe H.Hash)
+resolveRevision repo rev = resolveBase repo base >>= applyModifiers repo modifiers where
+    base = revisionBase rev; modifiers = revisionModifiers rev
 
 testData = S.pack $ Prelude.map c2w "foo^2^~^1^{commit}@{2}"
 test = case parseOnly revision testData of
