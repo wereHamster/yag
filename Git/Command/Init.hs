@@ -12,7 +12,7 @@ templateDirectories = [
     ]
 
 run :: [String] -> IO ()
-run argv = do
+run args = do
     putStrLn "Initializing repo"
     mapM (createDirectoryIfMissing True) templateDirectories
     return ()

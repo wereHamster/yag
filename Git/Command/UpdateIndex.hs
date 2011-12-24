@@ -25,9 +25,9 @@ parse argv = case getOpt Permute flags argv of
     (_, _, errs) -> do displayHelp errs
 
 run :: [String] -> IO ()
-run argv = do
-    args <- parse argv
-    putStrLn $ show args
-    if null args
+run args = do
+    args1 <- parse args
+    putStrLn $ show args1
+    if null args1
         then exitWith (ExitFailure 1)
         else exitWith ExitSuccess

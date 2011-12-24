@@ -5,11 +5,9 @@ import System.Environment
 import System.Console.GetOpt
 
 import Data.List
+import qualified Data.Map as M
 
-import qualified Git.Command.Init           as Init
-import qualified Git.Command.RevParse       as RevParse
-import qualified Git.Command.UpdateIndex    as UpdateIndex
-import qualified Git.Command.WriteTree      as WriteTree
+import Git.Command (commandList)
 
 data Flag = Help | Verbose | TemplateDirectory (Maybe String)
     deriving (Eq, Ord, Show)
@@ -49,19 +47,14 @@ parse (argv, cmd, rest) = case getOpt Permute flags argv of
     -- Errors while parsing the arguments.
     (_, _, errs) -> do displayHelp errs
 
+loadContext (args, cmd, xs) = return (cmd, xs)
+
+commandMap = M.fromList commandList
+
 main :: IO ()
 main = do
     (args, cmd, xs) <- parse =<< splitArgs =<< getArgs
-    runCommand cmd xs
 
-
-runCommand :: String -> [String] -> IO ()
-
-runCommand "init"               = Init.run
-runCommand "rev-parse"          = RevParse.run
-runCommand "update-index"       = UpdateIndex.run
-runCommand "write-tree"         = WriteTree.run
-
-runCommand cmd = \_ -> do
-    putStrLn $ "Unknown command: " ++ cmd
-    exitWith (ExitFailure 1)
+    case M.lookup cmd commandMap of
+        Nothing -> putStrLn $ "Unknown command: " ++ cmd
+        Just run -> run xs
