@@ -56,5 +56,5 @@ main = do
     (args, cmd, xs) <- parse =<< splitArgs =<< getArgs
 
     case M.lookup cmd commandMap of
-        Nothing -> putStrLn $ "Unknown command: " ++ cmd
+        Nothing -> displayHelp []
         Just run -> run xs
