@@ -32,9 +32,6 @@ hashFromString a = hashFromHex $ L.fromChunks [a]
 hashFromHex :: L.ByteString -> Hash
 hashFromHex hex = Hash $ L.pack $ decodeHex $ L.unpack hex
 
-hashFromHexStrict :: S.ByteString -> Hash
-hashFromHexStrict hex = hashFromHex $ L.fromChunks [hex]
-
 hashFromHexString :: String -> Hash
 hashFromHexString hex = hashFromHex $ L.pack $ map c2w hex
 

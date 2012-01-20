@@ -159,9 +159,9 @@ applyCommitHeaders =
   where
     applyHeader commit (key, value)
         | key == "tree" =
-            commit { commitTree = hashFromHexStrict value }
+            commit { commitTree = hashFromString value }
         | key == "parent" =
-            commit { commitParents = (commitParents commit) ++ [(hashFromHexStrict value)] }
+            commit { commitParents = (commitParents commit) ++ [(hashFromString value)] }
         | key == "author" =
             applyCommitAuthor commit value
         | key == "committer" =
@@ -189,7 +189,7 @@ applyTagHeaders :: Tag -> [(String, S.ByteString)] -> Tag
 applyTagHeaders = foldl applyHeader where
     applyHeader tag (key, value)
         | key == "object" =
-            tag { tagObject = hashFromHexStrict value }
+            tag { tagObject = hashFromString value }
         | key == "type" =
             tag { tagObjectType = typeFromString $ toString value }
         | key == "tagger" =

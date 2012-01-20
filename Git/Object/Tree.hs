@@ -25,7 +25,7 @@ instance Show Entry where
 data Tree = Tree { treeEntries :: [Entry] } deriving (Eq)
 
 -- The magic empty tree hash. It's not hardcoded anywhere, instead we generate
--- it as needed. But we should still check somewhere that we'r generating the
+-- it as needed. But we should still check somewhere that we're generating the
 -- correct hash: 4b825dc642cb6eb9a060e54bf8d69288fbee4904
 emptyTreeHash :: Hash
 emptyTreeHash = treeHash $ Tree []
