@@ -79,8 +79,8 @@ remString = toString <$> takeRest <* endOfInput
 
 -- Binary and hex encoded hashes.
 binaryHash, stringHash :: Parser Hash
-binaryHash = hashFromBinary <$> AP.take 20
-stringHash = hashFromString <$> AP.take 40
+binaryHash = fromBinaryByteString <$> AP.take 20
+stringHash = fromHexByteString <$> AP.take 40
 
 -- The Tree, Commit and Tag objects are plaintext and start with header lines.
 -- This is a parser for these header lines, it splits each line into a
@@ -142,8 +142,6 @@ commitParser = ctor <$> manyTill header newline <*> remString where
     ctor headers message = applyCommitHeaders commit headers where
         commit = emptyCommit { commitMessage = message }
 
-    message = takeRest <* endOfInput
-
 -- Currently we don't handle the case when this function fails.
 applyCommitAuthor, applyCommitCommitter :: Commit -> S.ByteString -> Commit
 applyCommitAuthor commit hdr = case parseOnly identTime hdr of
@@ -159,9 +157,9 @@ applyCommitHeaders =
   where
     applyHeader commit (key, value)
         | key == "tree" =
-            commit { commitTree = hashFromString value }
+            commit { commitTree = fromHexByteString value }
         | key == "parent" =
-            commit { commitParents = (commitParents commit) ++ [(hashFromString value)] }
+            commit { commitParents = (commitParents commit) ++ [(fromHexByteString value)] }
         | key == "author" =
             applyCommitAuthor commit value
         | key == "committer" =
@@ -189,7 +187,7 @@ applyTagHeaders :: Tag -> [(String, S.ByteString)] -> Tag
 applyTagHeaders = foldl applyHeader where
     applyHeader tag (key, value)
         | key == "object" =
-            tag { tagObject = hashFromString value }
+            tag { tagObject = fromHexByteString value }
         | key == "type" =
             tag { tagObjectType = typeFromString $ toString value }
         | key == "tagger" =

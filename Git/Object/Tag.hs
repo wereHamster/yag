@@ -41,5 +41,5 @@ instance Show Tag where
 
 
 tagHash :: Tag -> Hash
-tagHash tag = hashFromObject Git.Object.Tag tagData where
+tagHash tag = fromObject Git.Object.Tag tagData where
     tagData = L.pack $ map (fromIntegral . ord) $ show tag

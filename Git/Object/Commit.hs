@@ -62,5 +62,5 @@ commitMessageSubject commit = head $ lines $ commitMessage commit
 
 
 commitHash :: Commit -> Hash
-commitHash commit = hashFromObject Git.Object.Commit commitData where
+commitHash commit = fromObject Git.Object.Commit commitData where
     commitData = L.pack $ map (fromIntegral . ord) $ show commit

@@ -34,6 +34,6 @@ instance Show Tree where
     show tree = unlines $ map show $ treeEntries tree
 
 treeHash :: Tree -> Hash
-treeHash tree = hashFromObject Object.Tree treeData
+treeHash tree = fromObject Object.Tree treeData
     where
         treeData = L.pack $ map (fromIntegral . ord) $ show tree

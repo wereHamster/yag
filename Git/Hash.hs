@@ -1,11 +1,22 @@
 
-module Git.Hash where
+module Git.Hash (
+
+    -- The 'Hash' type
+    Hash,
+
+    -- Creating hashes
+    nullHash, fromObject, fromString, fromBinaryByteString, fromHexByteString,
+
+    -- Miscellaneous
+    abbrev
+
+) where
 
 import Data.ByteString.Internal
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 
-import Data.Digest.SHA1
+import Data.Digest.SHA1 (Word160(..), hash)
 
 import Data.Bits
 import Data.Char
@@ -20,60 +31,68 @@ import Git.Object
 -- store it in its original Word160 type. But that's far future.
 data Hash = Hash { hashData :: L.ByteString } deriving (Eq)
 
-
--- Creating hash from a binary or hex encoded ByteString. Those are the
--- formats which appear in files or are supplied by the user.
-hashFromBinary, hashFromString :: S.ByteString -> Hash
-hashFromBinary a = Hash $ L.fromChunks [a]
-hashFromString a = hashFromHex $ L.fromChunks [a]
-
--- We support conversion between Hash and ByteString. Because most of our
--- input we get in the form of ByteString (file etc).
 hashFromHex :: L.ByteString -> Hash
 hashFromHex hex = Hash $ L.pack $ decodeHex $ L.unpack hex
 
-hashFromHexString :: String -> Hash
-hashFromHexString hex = hashFromHex $ L.pack $ map c2w hex
 
+-- * Creating hashes
+
+-- The null hash is used quite often, for example to denote a non-existing
+-- object.
+nullHash :: Hash
+nullHash = Hash { hashData = L.pack $ take 20 $ repeat 0 }
+
+-- Build a Hash out of the object type and its data.
+fromObject :: Git.Object.Type -> L.ByteString -> Hash
+fromObject t d =
+    Hash (hashByteString $ hash $ L.unpack $ L.append header d)
+  where
+    header = L.pack $ map (fromIntegral . ord) string
+    string = (typeString t) ++ " " ++ (show $ L.length d) ++ "\0"
+
+-- Build a hash from a strict bytestring, which contains either the binary or
+-- hex-encoded hash. This is most useful when reading the data from a file,
+-- network or another stream.
+fromBinaryByteString, fromHexByteString :: S.ByteString -> Hash
+fromBinaryByteString a = Hash $ L.fromChunks [a]
+fromHexByteString a    = hashFromHex $ L.fromChunks [a]
+
+-- Build a hash from an ordinary String. The hash is assumed to be
+-- hex-encoded, so this function is useful for example to parse user input.
+fromString :: String -> Hash
+fromString hex = hashFromHex $ L.pack $ map c2w hex
+
+
+-- * Internal stuff
 
 hashByteString :: Word160 -> L.ByteString
-hashByteString hash = L.pack $ concat $ map toBytes $ toWords hash
-    where
-        toWords (Word160 a b c d e) = a : b : c : d : e : []
-        toBytes a = (w (s a 24)) : (w (s a 16)) : (w (s a 8)) : (w a) : []
-            where w = fromIntegral; s = shiftR
+hashByteString hash =
+    L.pack $ concat $ map toBytes $ toWords hash
+  where
+    toWords (Word160 a b c d e) = a : b : c : d : e : []
+    toBytes a = (w (s a 24)) : (w (s a 16)) : (w (s a 8)) : (w a) : []
+        where w = fromIntegral; s = shiftR
 
 
 -- The hex encoding and decoding functions operate on [Word8]. Apparently you
 -- can't foldr over ByteString, or something like that. In any case, ghc
 -- didn't like what I had.
 encodeHex :: [Word8] -> [Word8]
-encodeHex = foldr paddedShowHex []
-        where
-            paddedShowHex x xs = digit (x `shiftR` 4) : digit (x .&. 0xf) : xs
-            digit x = c2w $ intToDigit $ fromIntegral x
+encodeHex =
+    foldr paddedShowHex []
+  where
+    paddedShowHex x xs = digit (x `shiftR` 4) : digit (x .&. 0xf) : xs
+    digit x = c2w $ intToDigit $ fromIntegral x
 
 decodeHex :: [Word8] -> [Word8]
 decodeHex [] = []
-decodeHex (x:y:r) = ((c x) * 16 + (c y)) : decodeHex r
-    where
-        c x
-            | x >= 48 && x <=  57 = x - 48
-            | x >= 65 && x <=  70 = x - 65 + 10
-            | x >= 97 && x <= 102 = x - 97 + 10
-
-
--- Helper function to hash an object. Give the type and its contents (without
--- the header!), and we'll return the Hash.
-hashFromObject :: Git.Object.Type -> L.ByteString -> Hash
-hashFromObject t d = Hash (hashByteString $ hash $ L.unpack $ L.append header d)
-    where
-        header = L.pack $ map (fromIntegral . ord) string
-        string = (typeString t) ++ " " ++ (show $ L.length d) ++ "\0"
-
--- This is just for convenience.
-nullHash :: Hash
-nullHash = Hash { hashData = L.pack $ take 20 $ repeat 0 }
+decodeHex (x:y:r) =
+    ((c x) * 16 + (c y)) : decodeHex r
+  where
+    c x
+        | x >= 48 && x <=  57 = x - 48
+        | x >= 65 && x <=  70 = x - 65 + 10
+        | x >= 97 && x <= 102 = x - 97 + 10
 
 
 -- Showing a hash displays its contents in hex encoding.

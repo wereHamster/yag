@@ -65,7 +65,7 @@ expand repo ref = fullNameRef repo ref >>= asSymref where
 resolve :: Repository -> Maybe Ref -> IO (Maybe Hash)
 resolve _     Nothing             = return Nothing
 resolve repo (Just (Symref path)) = readRef repo path >>= resolve repo
-resolve repo (Just (Direct hash)) = return $ Just $ hashFromHexString hash
+resolve repo (Just (Direct hash)) = return $ Just $ fromString hash
 
 -- First expand the string then recursively resolve the ref into a hash.
 resolveRef :: Repository -> String -> IO (Maybe Hash)

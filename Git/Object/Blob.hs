@@ -9,4 +9,4 @@ import Git.Object
 data Blob = Blob { blobData :: L.ByteString } deriving (Eq, Show)
 
 blobHash :: Blob -> Hash
-blobHash blob = hashFromObject Git.Object.Blob (blobData blob)
+blobHash blob = fromObject Git.Object.Blob (blobData blob)
