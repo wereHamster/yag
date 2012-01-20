@@ -32,7 +32,7 @@ import Git.Object
 data Hash = Hash { hashData :: S.ByteString } deriving (Eq)
 
 hashFromHex :: S.ByteString -> Hash
-hashFromHex hex = Hash $ S.pack $ decodeHex $ S.unpack hex
+hashFromHex = Hash . S.pack . decodeHex . S.unpack
 
 
 -- * Creating hashes
@@ -54,13 +54,13 @@ fromObject t d =
 -- hex-encoded hash. This is most useful when reading the data from a file,
 -- network or another stream.
 fromBinaryByteString, fromHexByteString :: S.ByteString -> Hash
-fromBinaryByteString a = Hash a
-fromHexByteString a    = hashFromHex a
+fromBinaryByteString = Hash
+fromHexByteString    = hashFromHex
 
 -- Build a hash from an ordinary String. The hash is assumed to be
 -- hex-encoded, so this function is useful for example to parse user input.
 fromString :: String -> Hash
-fromString hex = hashFromHex $ S.pack $ map c2w hex
+fromString = hashFromHex . S.pack . map c2w
 
 
 -- * Internal stuff
