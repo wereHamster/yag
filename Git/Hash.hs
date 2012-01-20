@@ -16,6 +16,8 @@ import Data.ByteString.Internal
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 
+import Data.ByteString.Base16 (encode, decode)
+
 import Data.Digest.SHA1 (Word160(..), hash)
 
 import Data.Bits
@@ -32,7 +34,7 @@ import Git.Object
 data Hash = Hash { hashData :: S.ByteString } deriving (Eq)
 
 hashFromHex :: S.ByteString -> Hash
-hashFromHex = Hash . S.pack . decodeHex . S.unpack
+hashFromHex = Hash . fst . decode
 
 
 -- * Creating hashes
@@ -74,30 +76,9 @@ hashByteString hash =
         where w = fromIntegral; s = shiftR
 
 
--- The hex encoding and decoding functions operate on [Word8]. Apparently you
--- can't foldr over ByteString, or something like that. In any case, ghc
--- didn't like what I had.
-encodeHex :: [Word8] -> [Word8]
-encodeHex =
-    foldr paddedShowHex []
-  where
-    paddedShowHex x xs = digit (x `shiftR` 4) : digit (x .&. 0xf) : xs
-    digit x = c2w $ intToDigit $ fromIntegral x
-
-decodeHex :: [Word8] -> [Word8]
-decodeHex [] = []
-decodeHex (x:y:r) =
-    ((c x) * 16 + (c y)) : decodeHex r
-  where
-    c x
-        | x >= 48 && x <=  57 = x - 48
-        | x >= 65 && x <=  70 = x - 65 + 10
-        | x >= 97 && x <= 102 = x - 97 + 10
-
-
 -- Showing a hash displays its contents in hex encoding.
 instance Show Hash where
-    show hash = map w2c $ encodeHex $ S.unpack $ hashData hash
+    show hash = map w2c $ S.unpack $ encode $ hashData hash
 
 abbrev :: Int -> Hash -> String
 abbrev n hash = take n $ show hash
