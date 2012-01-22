@@ -7,6 +7,9 @@ module Git.Hash (
     -- Creating hashes
     nullHash, fromObject, fromString, fromBinaryByteString, fromHexByteString,
 
+    -- Parsers
+    binaryHash, stringHash,
+
     -- Miscellaneous
     abbrev
 
@@ -15,6 +18,10 @@ module Git.Hash (
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
+
+import Control.Applicative
+import qualified Data.Attoparsec.ByteString as AP (take)
+import Data.Attoparsec.Char8 hiding (take)
 
 import Data.ByteString.Base16 (encode, decode)
 
@@ -68,6 +75,14 @@ fromHexByteString = unsafeCreate . fst . decode
 fromString :: String -> Hash
 fromString = unsafeCreate . fst . decode . S.pack . map c2w
 
+
+
+-- * Parsers
+
+-- | Binary and hex encoded hashes.
+binaryHash, stringHash :: Parser Hash
+binaryHash = fromBinaryByteString <$> AP.take 20
+stringHash = fromHexByteString <$> AP.take 40
 
 
 -- * Miscellaneous

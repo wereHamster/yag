@@ -5,9 +5,22 @@ module Git.Identity (
     Identity(..),
 
     -- Creating identities
-    defaultIdentity
+    defaultIdentity,
+
+    -- Parser
+    identity, identTime
 
 ) where
+
+import Control.Applicative
+import qualified Data.Attoparsec.ByteString as AP (takeWhile)
+import Data.Attoparsec.Char8 hiding (take)
+
+import System.Locale
+import Data.Time
+
+import Git.Utils
+import Git.Parser
 
 
 -- | Identity is a name + email address.
@@ -24,3 +37,17 @@ instance Show Identity where
 -- part of his plan for world domination.
 defaultIdentity :: Identity
 defaultIdentity = Identity "Tomas Carnecky" "tomas.carnecky@gmail.com"
+
+
+-- * Parser
+
+-- | The identity is "name <email>".
+identity :: Parser Identity
+identity = ctor <$> name <*> email where
+    ctor name email = Identity (strip $ toString name) (strip $ toString email)
+    name  = AP.takeWhile (not . (== c2w '<')) <* char '<'
+    email = AP.takeWhile (not . (== c2w '>')) <* char '>'
+
+-- | Identity + ZonedTime, space separated, as it appears in header lines.
+identTime :: Parser (Identity, ZonedTime)
+identTime = (,) <$> identity <* space <*> timestamp

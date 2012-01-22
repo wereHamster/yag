@@ -90,7 +90,7 @@ applyCommitCommitter commit hdr = case AP.parseOnly identTime hdr of
 -- Given a list of headers, apply them to the commit.
 applyCommitHeaders :: Commit -> [(String, S.ByteString)] -> Commit
 applyCommitHeaders = 
-    foldl applyHeader 
+    foldl applyHeader
   where
     applyHeader commit (key, value)
         | key == "tree" =
