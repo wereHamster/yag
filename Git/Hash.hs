@@ -2,7 +2,7 @@
 module Git.Hash (
 
     -- The 'Hash' type
-    Hash,
+    Hash, hashData,
 
     -- Creating hashes
     nullHash, fromObject, fromString, fromBinaryByteString, fromHexByteString,
