@@ -2,14 +2,13 @@
 
 module Git.Object (
 
-    -- The 'Object' type
-    Object(..), Type(..),
+    -- The 'Type' type
+    Type(..), typeString, objectType,
 
-    typeString, objectParser, objectType
+    -- The 'Object' type
+    Object(..), objectParser
 
 ) where
-
-import Data.Char (toLower)
 
 import Control.Applicative
 import Data.Attoparsec.Char8 hiding (take)
@@ -19,21 +18,21 @@ import Git.Object.Commit
 import Git.Object.Tag
 import Git.Object.Tree
 
+
+-- * Type
+
 -- | The four basic object types.
 data Type = TBlob | TCommit | TTag | TTree
 
+
+-- | Convert a type to its string representation.
 typeString :: Type -> String
-typeString TBlob = "blob"
+typeString TBlob   = "blob"
+typeString TCommit = "commit"
+typeString TTag    = "tag"
+typeString TTree   = "tree"
 
-data Object = Blob Blob | Commit Commit | Tag Tag | Tree Tree
-    deriving (Show)
-
-
--- * Parser
-objectParser :: Parser Object
-objectParser = header >>= objectBuilder where
-    header = (,) <$> (objectType <* space) <*> (decimal <* (char '\0'))
-
+-- | Parser for the object typ.
 objectType :: Parser Type
 objectType = blob <|> commit <|> tag <|> tree where
     blob   = TBlob   <$ string "blob"
@@ -41,9 +40,22 @@ objectType = blob <|> commit <|> tag <|> tree where
     tag    = TTag    <$ string "tag"
     tree   = TTree   <$ string "tree"
 
--- Return the proper parser for the given object type.
-objectBuilder :: (Type, Int) -> Parser Object
-objectBuilder (TBlob,   length) = Blob   <$> blobParser length
-objectBuilder (TCommit, length) = Commit <$> commitParser
-objectBuilder (TTag,    length) = Tag    <$> tagParser
-objectBuilder (TTree,   length) = Tree   <$> treeParser
+
+-- * Object
+
+-- | The actual objects.
+data Object = Blob Blob | Commit Commit | Tag Tag | Tree Tree
+    deriving (Show)
+
+
+-- | Parser for the 'Object' type.
+objectParser :: Parser Object
+objectParser =
+    header >>= objectBuilder
+  where
+    header = (,) <$> (objectType <* space) <*> (decimal <* (char '\0'))
+
+    objectBuilder (TBlob,   length) = Blob   <$> blobParser length
+    objectBuilder (TCommit, length) = Commit <$> commitParser
+    objectBuilder (TTag,    length) = Tag    <$> tagParser
+    objectBuilder (TTree,   length) = Tree   <$> treeParser
