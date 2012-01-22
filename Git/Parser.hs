@@ -225,27 +225,3 @@ objectType = blob <|> commit <|> tag <|> tree where
     commit = Git.Object.Commit <$ (string "commit")
     tag    = Git.Object.Tag    <$ (string "tag")
     tree   = Git.Object.Tree   <$ (string "tree")
-
-
-{-
-commitData = S.pack $ Prelude.map c2w "tree b9c78fce14142eadb1515b433582e3e30899a3b8\nparent 9b9cb51d592a6217404806acdf7acd010eccc048\nauthor arst <qwfp> 3456 +0100\n\nmessage"
-testParse = case parse commitParser commitData of
-    Fail err a b -> "fail " ++ show err
-    Partial a -> case a S.empty of
-        Fail err a b -> show err ++ show a ++ show b
-        Done a b -> "done: " ++ show b
-    Done a b -> "done"
-
-identityData = S.pack $ Prelude.map c2w "Tomas Carnecky <tomas.carnecky@gmail.com> 8765678987 +0100"
-testIdentity = case parse identTime identityData of
-    Fail err a b -> "fail " ++ show err
-    Partial a -> case a S.empty of
-        Fail err a b -> show err ++ show a ++ show b
-        Done a b -> "done after partial: " ++ show b
-    Done a b -> "done " ++ show b
-
-treeData = S.pack $ Prelude.map c2w $ "100644 bar\0\255\1\2\3\4\5\6\7\8\9\0\1\2\3\4\5\6\7\8\9" ++ "100755 foo\0\0\1\2\1\2\1\2\1\2\1\2\1\2\1\2\1\2\1\2\1"
-testTree = case parseOnly treeParser treeData of
-    Left err -> error $ "fail " ++ show err
-    Right tree -> tree
--}
