@@ -1,5 +1,13 @@
 
-module Git.Repository where
+module Git.Repository (
+
+    -- The 'Repository' type
+    Repository,
+
+    -- Locating repositories
+    findRepository, gitDir, loadObject, commitParent, walkAncestors, peelTo
+
+) where
 
 import Control.Exception
 
