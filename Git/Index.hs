@@ -121,10 +121,12 @@ loadIndex = do
 -- is probably not the fastest due to the heavy use of length, !! etc.
 
 buildIndexTree :: Index -> String -> Tree -> [(String, Maybe IndexEntry)] -> Tree
-buildIndexTree index prefix tree [] = tree
-buildIndexTree index prefix tree (x:xs) = buildIndexTree index prefix (tree { treeEntries = entries }) xs where
-    entries = (treeEntries tree) ++ [entry]
-    entry = toTreeEntry index prefix x
+buildIndexTree index prefix tree entries =
+    foldl buildTree tree entries
+  where
+    buildTree tree entry = tree { treeEntries = entries } where
+        entries = treeEntries tree ++ [toTreeEntry index prefix entry]
+
 
 -- | Build a tree out of entries in the index with the given prefix.
 indexTreePrefix :: Index -> String -> Tree
