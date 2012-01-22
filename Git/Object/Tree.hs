@@ -15,6 +15,7 @@ import Control.Applicative
 import Data.Attoparsec.Char8 hiding (take)
 
 import Numeric
+import Data.Bits
 import Data.List
 import Data.Char
 import Text.Printf
@@ -27,8 +28,9 @@ data Entry = Entry {
 } deriving (Eq)
 
 instance Show Entry where
-    show entry = concat $ intersperse " " [ mode, hash, path ] where
+    show entry = concat $ intersperse " " [ mode, typ, hash, path ] where
         mode = formatMode $ entryMode entry
+        typ  = if ((entryMode entry) .&. 0o040000) == 0o040000 then "tree" else "blob"
         hash = show $ entryHash entry
         path = entryPath entry
 
