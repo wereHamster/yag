@@ -1,5 +1,9 @@
 
-module Git.Utils where
+module Git.Utils (
+
+    strip
+
+) where
 
 whitespaceCharacters :: String
 whitespaceCharacters = " \t\r\n"
