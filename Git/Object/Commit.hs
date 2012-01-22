@@ -1,13 +1,14 @@
 
-module Git.Object.Commit where
+module Git.Object.Commit (
 
-import Data.ByteString.Internal
-import qualified Data.ByteString as S
+    -- The 'Commit' type
+    Commit(..),
+
+    emptyCommit, commitHash
+
+) where
+
 import qualified Data.ByteString.Lazy as L
-
-import Control.Applicative
-import qualified Data.Attoparsec as AP (takeWhile)
-import Data.Attoparsec.Char8 hiding (take)
 
 import System.Locale
 import Data.Time
@@ -26,7 +27,7 @@ data Commit = Commit {
     commitTree :: Hash, commitParents :: [Hash],
 
     -- Each commit has an author and a committer. And dates for both.
-    commitAuthor :: Identity,      commitCommitter :: Identity,
+    commitAuthor :: Identity,        commitCommitter :: Identity,
     commitAuthorDate :: ZonedTime,   commitCommitterDate :: ZonedTime,
 
     commitMessage :: String
@@ -35,6 +36,11 @@ data Commit = Commit {
 emptyCommit :: Commit
 emptyCommit = Git.Object.Commit.Commit nullHash [] defaultIdentity defaultIdentity time time "" where
     time = utcToZonedTime utc $ posixSecondsToUTCTime $ realToFrac 0
+
+commitHash :: Commit -> Hash
+commitHash commit = fromObject Git.Object.Commit commitData where
+    commitData = L.pack $ map (fromIntegral . ord) $ show commit
+
 
 onelineCommit :: Commit -> String
 onelineCommit commit = concat $ intersperse " " [ hash, subject, date ] where
@@ -58,9 +64,3 @@ isRootCommit commit = (length $ commitParents commit) == 0
 
 commitMessageSubject :: Commit -> String
 commitMessageSubject commit = head $ lines $ commitMessage commit
-
-
-
-commitHash :: Commit -> Hash
-commitHash commit = fromObject Git.Object.Commit commitData where
-    commitData = L.pack $ map (fromIntegral . ord) $ show commit

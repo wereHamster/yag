@@ -1,21 +1,25 @@
 
-module Git.Object where
+module Git.Object (
 
-import Data.ByteString.Internal
-import qualified Data.ByteString as S
+    -- The 'Type' type
+    Type(..),
 
-import Control.Applicative
-import qualified Data.Attoparsec as AP (takeWhile)
-import Data.Attoparsec.Char8 hiding (take)
+    typeString, typeFromString
 
-import Data.Char
+) where
 
--- The four basic object types. Plus an invalid type.
+import Data.Char (toLower)
+
+
+-- | The four basic object types. Plus an invalid type.
 data Type = Invalid | Blob | Tree | Commit | Tag deriving (Eq, Show)
 
+
+-- | Return the type string for the given type.
 typeString :: Type -> String
 typeString = map toLower . show
 
+-- | Convert a type string into the actual type.
 typeFromString :: String -> Type
 typeFromString "blob"   = Blob
 typeFromString "commit" = Commit

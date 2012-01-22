@@ -1,5 +1,12 @@
 
-module Git.Object.Tag where
+module Git.Object.Tag (
+
+    -- The 'Tag' type
+    Tag(..),
+
+    emptyTag
+
+) where
 
 import qualified Data.ByteString.Lazy as L
 

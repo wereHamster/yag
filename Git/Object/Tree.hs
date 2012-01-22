@@ -1,5 +1,12 @@
 
-module Git.Object.Tree where
+module Git.Object.Tree (
+
+    -- The 'Tree' type
+    Tree(..), Entry(..),
+
+    emptyTreeHash
+
+) where
 
 import qualified Data.ByteString.Lazy as L
 import Numeric
@@ -22,6 +29,7 @@ instance Show Entry where
 
         formatMode mode = printf "%06o" mode :: String
 
+-- | A tree is basically a list of entries.
 data Tree = Tree { treeEntries :: [Entry] } deriving (Eq)
 
 -- The magic empty tree hash. It's not hardcoded anywhere, instead we generate
