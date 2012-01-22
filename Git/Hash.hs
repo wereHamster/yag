@@ -12,7 +12,7 @@ module Git.Hash (
 
 ) where
 
-import Data.ByteString.Internal
+import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 
@@ -33,40 +33,64 @@ import Git.Object
 -- store it in its original Word160 type. But that's far future.
 data Hash = Hash { hashData :: S.ByteString } deriving (Eq)
 
-hashFromHex :: S.ByteString -> Hash
-hashFromHex = Hash . fst . decode
+-- | Showing a hash displays its contents in hex encoding.
+instance Show Hash where
+    show hash = map w2c $ S.unpack $ encode $ hashData hash
+
 
 
 -- * Creating hashes
 
--- The null hash is used quite often, for example to denote a non-existing
--- object.
+-- | The null hash is used quite often, for example to denote a non-existing
+-- object. It is 20 bytes of zeros.
 nullHash :: Hash
 nullHash = Hash { hashData = S.pack $ take 20 $ repeat 0 }
 
--- Build a Hash out of the object type and its data.
+-- | Build a Hash out of the object type and its data. This function will
+-- generate the correct header, append the payload and compute the hash over
+-- all of it.
 fromObject :: Git.Object.Type -> L.ByteString -> Hash
 fromObject t d =
-    Hash (hashByteString $ hash $ L.unpack $ L.append header d)
+    unsafeCreate (hashByteString $ hash $ L.unpack $ L.append header d)
   where
     header = L.pack $ map (fromIntegral . ord) string
     string = (typeString t) ++ " " ++ (show $ L.length d) ++ "\0"
 
--- Build a hash from a strict bytestring, which contains either the binary or
--- hex-encoded hash. This is most useful when reading the data from a file,
--- network or another stream.
-fromBinaryByteString, fromHexByteString :: S.ByteString -> Hash
-fromBinaryByteString = Hash
-fromHexByteString    = hashFromHex
+-- | Build a hash from a strict 'ByteString' which contains the hash in binary.
+fromBinaryByteString :: S.ByteString -> Hash
+fromBinaryByteString = unsafeCreate
 
--- Build a hash from an ordinary String. The hash is assumed to be
+-- | Build a hash from a strict 'ByteString' which contains the hash in hex
+-- encoded representation.
+fromHexByteString :: S.ByteString -> Hash
+fromHexByteString = unsafeCreate . fst . decode
+
+-- | Build a hash from an ordinary String. The hash is assumed to be
 -- hex-encoded, so this function is useful for example to parse user input.
 fromString :: String -> Hash
-fromString = hashFromHex . S.pack . map c2w
+fromString = unsafeCreate . fst . decode . S.pack . map c2w
+
+
+
+-- * Miscellaneous
+
+-- | Return the first n characters of the string representation.
+abbrev :: Int -> Hash -> String
+abbrev n hash = take n $ show hash
+
 
 
 -- * Internal stuff
 
+-- Create a hash while checking that the input bytestring is exactly 20 bytes
+-- (the size of a SHA1 in binary representation). If that's not the case then
+-- raise an error. So use with care!
+unsafeCreate :: S.ByteString -> Hash
+unsafeCreate input
+    | S.length input == 20 = Hash input
+    | otherwise            = error "Git.Hash: input is not 20 bytes"
+
+-- | Convert a Word160 into a ByteString.
 hashByteString :: Word160 -> S.ByteString
 hashByteString hash =
     S.pack $ concat $ map toBytes $ toWords hash
@@ -74,11 +98,3 @@ hashByteString hash =
     toWords (Word160 a b c d e) = a : b : c : d : e : []
     toBytes a = (w (s a 24)) : (w (s a 16)) : (w (s a 8)) : (w a) : []
         where w = fromIntegral; s = shiftR
-
-
--- Showing a hash displays its contents in hex encoding.
-instance Show Hash where
-    show hash = map w2c $ S.unpack $ encode $ hashData hash
-
-abbrev :: Int -> Hash -> String
-abbrev n hash = take n $ show hash
