@@ -5,7 +5,8 @@ module Git.Repository (
     Repository,
 
     -- Locating repositories
-    findRepository, gitDir, loadObject, commitParent, walkAncestors, peelTo
+    findRepository, gitDir, loadObject, commitParent, walkAncestors,
+    peelTo
 
 ) where
 
@@ -26,7 +27,7 @@ import Data.Word
 import Git.Hash
 import Git.Object
 import Git.Object.Blob
-import Git.Object.Commit
+import Git.Object.Commit (commitHash, commitParents, commitTree)
 import Git.Object.Tag
 import Git.Object.Tree
 import Git.Parser
@@ -65,7 +66,7 @@ loadObject repo hash = do
     contents <- L.hGetContents handle
 
     decompData <- return $ S.concat $ L.toChunks $ decompress contents
-    object <- return $ parseOnly gitObject decompData
+    object <- return $ parseOnly objectParser decompData
     case object of
         Right a -> return a
         otherwise -> error "couldn't parse object"
@@ -73,26 +74,24 @@ loadObject repo hash = do
 peelTo :: Type -> Object -> IO (Maybe Hash)
 
 -- Commits can be peeled to itself or the tree.
-peelTo Git.Object.Commit (GitCommit o) = return $ Just $ commitHash o
-peelTo Git.Object.Tree   (GitCommit o) = return $ Just $ commitTree o
-
-peelTo _ _ = return Nothing
+peelTo TCommit (Commit o) = return $ Just $ commitHash o
+peelTo TTree   (Commit o) = return $ Just $ commitTree o
 
 commitParent :: Int -> Object -> IO (Maybe Hash)
-commitParent n (GitCommit c)
+commitParent n (Commit c)
     | n < 0 || n > (length $ commitParents c) = return Nothing
     | otherwise = return $ Just $ commitParents c !! (n - 1)
 commitParent _ _ = return Nothing
 
 walkAncestors :: Repository -> Int -> Object -> IO (Maybe Hash)
-walkAncestors repo n (GitCommit c)
+walkAncestors repo n (Commit c)
     | n == 0 = return $ Just $ commitHash c
     | null $ commitParents c = return Nothing
     | otherwise = loadObject repo (head $ commitParents c) >>= walkAncestors repo (n - 1)
 walkAncestors _ _ _ = return Nothing
 
-toCommit :: Object -> IO Commit
-toCommit (GitCommit commit) = return commit
+toCommit :: Object -> IO Object
+toCommit obj@(Commit commit) = return obj
 toCommit _ = error "Not a commit"
 
 dumpObjectAtPath :: FilePath -> IO ()
@@ -103,7 +102,7 @@ dumpObjectAtPath path = do
     contents <- L.hGetContents handle
 
     decompData <- return $ S.concat $ L.toChunks $ decompress contents
-    object <- return $ parseOnly gitObject decompData
+    object <- return $ parseOnly objectParser decompData
     case object of
         Right a -> putStrLn (show a)
         otherwise -> error "couldn't parse object"

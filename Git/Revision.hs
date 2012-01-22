@@ -21,10 +21,9 @@ import Control.Applicative
 import qualified Data.Attoparsec.ByteString as AP (word8, inClass, take, takeWhile, takeTill)
 import Data.Attoparsec.Char8 hiding (take)
 
-import qualified Git.Hash as H
-import Git.Object.Commit
-import Git.Object
+import Git.Hash
 import Git.Parser
+import Git.Object
 import Git.Repository
 import Git.Ref
 
@@ -32,12 +31,12 @@ import Git.Ref
 -- We start with a base, and modify it until we get the revision we want. This
 -- approach makes it quite easy to write the parser, as we parse the rev from
 -- left to right, starting with a base followed by many modifiers.
-data Base = Hash H.Hash | Describe String | Refname String | Index | Any
+data Base = Hash Hash | Describe String | Refname String | Index | Any
 instance Show Base where
     show (Refname a)    = a
 
 
-data Modifier = Parent Int | Ancestor Int | Peel Git.Object.Type | Reflog Int |
+data Modifier = Parent Int | Ancestor Int | Peel Type | Reflog Int |
     Date UTCTime | Branch Int | Upstream | Nontag | Regex String | Path String
 instance Show Modifier where
     show (Parent a)     = "^" ++ (show a)
@@ -64,7 +63,7 @@ parseRevision input = case parseOnly revision (S.pack $ Prelude.map c2w input) o
     Right a -> Just a
 
 -- | Turn a Revision into a Hash (if possible).
-resolveRevision :: Repository -> Revision -> IO (Maybe H.Hash)
+resolveRevision :: Repository -> Revision -> IO (Maybe Hash)
 resolveRevision repo rev =
     resolveBase repo base >>= applyModifiers repo modifiers
   where
@@ -115,7 +114,7 @@ revision = Revision <$> base <*> many modifier <* endOfInput
 
 -- * Internal
 
-resolveBase :: Repository -> Base -> IO (Maybe H.Hash)
+resolveBase :: Repository -> Base -> IO (Maybe Hash)
 resolveBase repo base = do
     case base of
         Hash a    -> return $ Just a
@@ -124,7 +123,7 @@ resolveBase repo base = do
             resolveRef repo $ fromJust x
         otherwise -> return Nothing
 
-applyModifiers :: Repository -> [Modifier] -> Maybe H.Hash -> IO (Maybe H.Hash)
+applyModifiers :: Repository -> [Modifier] -> Maybe Hash -> IO (Maybe Hash)
 applyModifiers repo modifiers base =
     foldM apply base modifiers
   where

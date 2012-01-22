@@ -1,28 +1,49 @@
+{-# LANGUAGE OverloadedStrings #-}  
 
 module Git.Object (
 
-    -- The 'Type' type
-    Type(..),
+    -- The 'Object' type
+    Object(..), Type(..),
 
-    typeString, typeFromString
+    typeString, objectParser, objectType
 
 ) where
 
 import Data.Char (toLower)
 
+import Control.Applicative
+import Data.Attoparsec.Char8 hiding (take)
 
--- | The four basic object types. Plus an invalid type.
-data Type = Invalid | Blob | Tree | Commit | Tag deriving (Eq, Show)
+import Git.Object.Blob
+import Git.Object.Commit
+import Git.Object.Tag
+import Git.Object.Tree
 
+-- | The four basic object types.
+data Type = TBlob | TCommit | TTag | TTree
 
--- | Return the type string for the given type.
 typeString :: Type -> String
-typeString = map toLower . show
+typeString TBlob = "blob"
 
--- | Convert a type string into the actual type.
-typeFromString :: String -> Type
-typeFromString "blob"   = Blob
-typeFromString "commit" = Commit
-typeFromString "tag"    = Tag
-typeFromString "tree"   = Tree
-typeFromString _        = Invalid
+data Object = Blob Blob | Commit Commit | Tag Tag | Tree Tree
+    deriving (Show)
+
+
+-- * Parser
+objectParser :: Parser Object
+objectParser = header >>= objectBuilder where
+    header = (,) <$> (objectType <* space) <*> (decimal <* (char '\0'))
+
+objectType :: Parser Type
+objectType = blob <|> commit <|> tag <|> tree where
+    blob   = TBlob   <$ string "blob"
+    commit = TCommit <$ string "commit"
+    tag    = TTag    <$ string "tag"
+    tree   = TTree   <$ string "tree"
+
+-- Return the proper parser for the given object type.
+objectBuilder :: (Type, Int) -> Parser Object
+objectBuilder (TBlob,   length) = Blob   <$> blobParser length
+objectBuilder (TCommit, length) = Commit <$> commitParser
+objectBuilder (TTag,    length) = Tag    <$> tagParser
+objectBuilder (TTree,   length) = Tree   <$> treeParser

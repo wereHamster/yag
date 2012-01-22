@@ -2,20 +2,24 @@
 module Git.Object.Tree (
 
     -- The 'Tree' type
-    Tree(..), Entry(..),
+    Tree, Entry(..),
 
-    emptyTreeHash
+    emptyTreeHash, treeParser
 
 ) where
 
 import qualified Data.ByteString.Lazy as L
+
+import Control.Applicative
+import Data.Attoparsec.Char8 hiding (take)
+
 import Numeric
 import Data.List
 import Data.Char
 import Text.Printf
 
-import qualified Git.Object as Object
 import Git.Hash
+import Git.Parser
 
 data Entry = Entry {
     entryMode :: Int, entryPath :: String, entryHash :: Hash
@@ -42,6 +46,12 @@ instance Show Tree where
     show tree = unlines $ map show $ treeEntries tree
 
 treeHash :: Tree -> Hash
-treeHash tree = fromObject Object.Tree treeData
+treeHash tree = fromObject "tree" treeData
     where
         treeData = L.pack $ map (fromIntegral . ord) $ show tree
+
+-- * Parser
+treeParser :: Parser Tree
+treeParser = Tree <$> many1 treeEntry where
+    treeEntry = Entry <$> (octal <* space) <*> nullString <*> binaryHash
+

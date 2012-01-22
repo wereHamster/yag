@@ -24,8 +24,6 @@ import Data.Bits
 import Data.Char
 import Data.Word
 
-import Git.Object
-
 
 -- We hide the implementation of the hash behind this data. Internally the
 -- hash is stored in a lazy bytestring. This makes it very easy to convert it
@@ -49,12 +47,12 @@ nullHash = Hash { hashData = S.pack $ take 20 $ repeat 0 }
 -- | Build a Hash out of the object type and its data. This function will
 -- generate the correct header, append the payload and compute the hash over
 -- all of it.
-fromObject :: Git.Object.Type -> L.ByteString -> Hash
+fromObject :: String -> L.ByteString -> Hash
 fromObject t d =
     unsafeCreate (hashByteString $ hash $ L.unpack $ L.append header d)
   where
     header = L.pack $ map (fromIntegral . ord) string
-    string = (typeString t) ++ " " ++ (show $ L.length d) ++ "\0"
+    string = t ++ " " ++ (show $ L.length d) ++ "\0"
 
 -- | Build a hash from a strict 'ByteString' which contains the hash in binary.
 fromBinaryByteString :: S.ByteString -> Hash
