@@ -120,33 +120,32 @@ loadIndex = do
 -- This down below here is ugly. Don't look at it. It works sortof though, but
 -- is probably not the fastest due to the heavy use of length, !! etc.
 
-buildIndexTree :: Index -> String -> Tree -> [(String, Maybe IndexEntry)] -> Tree
-buildIndexTree index prefix tree entries =
-    foldl buildTree tree entries
-  where
-    buildTree tree entry = tree { treeEntries = entries } where
-        entries = treeEntries tree ++ [toTreeEntry index prefix entry]
-
-
 -- | Build a tree out of entries in the index with the given prefix.
 indexTreePrefix :: Index -> String -> Tree
-indexTreePrefix index prefix = do
-    let entries = indexEntries index
-    let l0 = filter (\x -> prefix `isPrefixOf` (name x)) entries
-    let l1 = indexEntriesAt l0 prefix
-    let l2 = nubBy (\x y -> (fst x) == (fst y)) l1
-    buildIndexTree index prefix emptyTree l2
+indexTreePrefix index prefix =
+    emptyTree { treeEntries = fmap (toTreeEntry index prefix) input }
+  where
+    input   = unique . (fmap (mapIndexEntry prefix)) $ entries
+    entries = filter (\x -> prefix `isPrefixOf` (name x)) (indexEntries index)
+    unique  = nubBy (\x y -> fst x == fst y)
 
-indexEntriesAt :: [IndexEntry] -> String -> [(String, Maybe IndexEntry)]
-indexEntriesAt entries prefix = fmap f entries where
-    f x = if '/' `elem` (drop (length prefix) (name x))
-        then (init $ nameComponents !! prefixLength, Nothing)
-        else (nameComponents !! prefixLength, Just x)
-        where
-            prefixComponents = splitPath prefix
-            prefixLength = length prefixComponents
-            nameComponents = splitPath (name x)
+-- | Given a prefix and an index entry, figure out if the entry is a directory
+-- or a blob. If it's a directory we know we have to build a tree and descend
+-- into it, otherwise we can insert it into the resulting tree.
+mapIndexEntry :: String -> IndexEntry -> (String, Maybe IndexEntry)
+mapIndexEntry prefix entry = if '/' `elem` rest
+    then (init $ nameComponents !! prefixLength, Nothing)
+    else (nameComponents !! prefixLength, Just entry)
+  where
+    rest = drop (length prefix) (name entry)
+    nameComponents = splitPath (name entry)
+    prefixComponents = splitPath prefix
+    prefixLength = length prefixComponents
 
+-- | If the index entry is a directory, we have to descend into it and
+-- generate a tree to get the hash. When we do that we also have to write the
+-- tree to the disk, or at least collect all the trees we generate along the
+-- way so someone else can do it.
 toTreeEntry :: Index -> String -> (String, Maybe IndexEntry) -> Entry
 toTreeEntry index prefix (name, Nothing) = Entry 0o040000 name (treeHash $ indexTreePrefix index (prefix ++ name ++ "/"))
 toTreeEntry index prefix (name, Just ie) = Entry (mode ie) name (hash ie)
