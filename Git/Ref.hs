@@ -1,5 +1,13 @@
 
-module Git.Ref (Ref, fullNameRef, resolveRef) where
+module Git.Ref (
+
+    -- The 'Ref' type
+    Ref,
+
+    -- Stuff to do with a ref
+    fullNameRef, resolveRef
+
+) where
 
 import Data.Char
 import Data.List
@@ -12,18 +20,9 @@ import Git.Repository
 -- Refs are either symbolic or direct hash references.
 data Ref = Symref String | Direct String
 
-firstTrue :: Monad m => [m (Maybe a)] -> m (Maybe a)
-firstTrue []     = return Nothing
-firstTrue (x:xs) = do
-    test <- x
-    case test of
-        Just _ -> return test
-        Nothing -> firstTrue xs
 
-stripWhitespace :: String -> String
-stripWhitespace = reverse . dropSpace . reverse . dropSpace where
-    dropSpace = dropWhile isSpace
-
+-- | Expand a string into a full ref, according to the rules set by git.
+-- For example: "master"" -> "refs/heads/master"
 fullNameRef :: Repository -> String -> IO (Maybe String)
 fullNameRef repo name = firstTrue $ map testPath sympaths where
 
@@ -43,6 +42,14 @@ fullNameRef repo name = firstTrue $ map testPath sympaths where
     -- List of paths to search from "git help rev-parse".
     prefixes = ["", "refs", "refs/tags", "refs/heads", "refs/remotes"]
     sympaths = map (</> name) prefixes ++ ["refs/remotes" </> name </> "HEAD"]
+
+-- First expand the string then recursively resolve the ref into a hash.
+resolveRef :: Repository -> String -> IO (Maybe Hash)
+resolveRef repo ref = expand repo ref >>= resolve repo
+
+
+
+-- * Internal
 
 -- This is a pretty basic parser of the lose ref files.
 parse :: String -> Maybe Ref
@@ -67,6 +74,14 @@ resolve _     Nothing             = return Nothing
 resolve repo (Just (Symref path)) = readRef repo path >>= resolve repo
 resolve repo (Just (Direct hash)) = return $ Just $ fromString hash
 
--- First expand the string then recursively resolve the ref into a hash.
-resolveRef :: Repository -> String -> IO (Maybe Hash)
-resolveRef repo ref = expand repo ref >>= resolve repo
+firstTrue :: Monad m => [m (Maybe a)] -> m (Maybe a)
+firstTrue []     = return Nothing
+firstTrue (x:xs) = do
+    test <- x
+    case test of
+        Just _ -> return test
+        Nothing -> firstTrue xs
+
+stripWhitespace :: String -> String
+stripWhitespace = reverse . dropSpace . reverse . dropSpace where
+    dropSpace = dropWhile isSpace
